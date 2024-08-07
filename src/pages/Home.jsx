@@ -1,62 +1,104 @@
-import React from 'react';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Grid from '@mui/material/Grid';
+import React from "react";
 
-import { Post } from '../components/Post';
-import { TagsBlock } from '../components/TagsBlock';
-import { CommentsBlock } from '../components/CommentsBlock';
+import { useMediaQuery, Tabs, Tab, Grid } from "@mui/material";
+
+import { Post, TagsBlock, CommentsBlock } from "../components";
+
+import { format } from "date-fns";
+import { useTheme } from "@emotion/react";
+
+import usePostsData from "../hooks/usePostsData";
+import useTagsData from "../hooks/useTagsData";
+import useCommentsData from "../hooks/useCommentsData";
+import useUserData from "../hooks/useUserData";
 
 export const Home = () => {
-  return (
-    <>
-      <Tabs style={{ marginBottom: 15 }} value={0} aria-label="basic tabs example">
-        <Tab label="Новые" />
-        <Tab label="Популярные" />
-      </Tabs>
-      <Grid container spacing={4}>
-        <Grid xs={8} item>
-          {[...Array(5)].map(() => (
-            <Post
-              id={1}
-              title="Roast the code #1 | Rock Paper Scissors"
-              imageUrl="https://res.cloudinary.com/practicaldev/image/fetch/s--UnAfrEG8--/c_imagga_scale,f_auto,fl_progressive,h_420,q_auto,w_1000/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/icohm5g0axh9wjmu4oc3.png"
-              user={{
-                avatarUrl:
-                  'https://res.cloudinary.com/practicaldev/image/fetch/s--uigxYVRB--/c_fill,f_auto,fl_progressive,h_50,q_auto,w_50/https://dev-to-uploads.s3.amazonaws.com/uploads/user/profile_image/187971/a5359a24-b652-46be-8898-2c5df32aa6e0.png',
-                fullName: 'Keff',
-              }}
-              createdAt={'12 июня 2022 г.'}
-              viewsCount={150}
-              commentsCount={3}
-              tags={['react', 'fun', 'typescript']}
-              isEditable
-            />
-          ))}
-        </Grid>
-        <Grid xs={4} item>
-          <TagsBlock items={['react', 'typescript', 'заметки']} isLoading={false} />
-          <CommentsBlock
-            items={[
-              {
-                user: {
-                  fullName: 'Вася Пупкин',
-                  avatarUrl: 'https://mui.com/static/images/avatar/1.jpg',
-                },
-                text: 'Это тестовый комментарий',
-              },
-              {
-                user: {
-                  fullName: 'Иван Иванов',
-                  avatarUrl: 'https://mui.com/static/images/avatar/2.jpg',
-                },
-                text: 'When displaying three lines or more, the avatar is not aligned at the top. You should set the prop to align the avatar at the top',
-              },
-            ]}
-            isLoading={false}
-          />
-        </Grid>
-      </Grid>
-    </>
-  );
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+    const [tabValue, setTabValue] = React.useState(0);
+
+    const { posts, postsStatus } = usePostsData(tabValue);
+    const { tags, tagsStatus } = useTagsData();
+    const comments = useCommentsData();
+    const userData = useUserData();
+    const isPostsLoading = postsStatus === "loading";
+    const isTagsLoading = tagsStatus === "loading";
+
+    const handleChangeTab = (_, newValue) => {
+        setTabValue(newValue);
+    };
+
+    return (
+        <>
+            {isMobile ? (
+                <Tabs
+                    style={{ marginBottom: 10, alignItems: "center" }}
+                    value={tabValue}
+                    aria-label="basic tabs example"
+                    onChange={handleChangeTab}
+                >
+                    <Tab
+                        label="Новые"
+                        sx={{ minWidth: 0, padding: "0px 12px" }}
+                    />
+                    <Tab
+                        label="Популярные"
+                        sx={{ minWidth: 0, padding: "0px 12px" }}
+                    />
+                    <TagsBlock items={tags} isLoading={isTagsLoading} />
+                </Tabs>
+            ) : (
+                <Tabs
+                    style={{ marginBottom: 15 }}
+                    value={tabValue}
+                    aria-label="basic tabs example"
+                    onChange={handleChangeTab}
+                >
+                    <Tab label="Новые" />
+                    <Tab label="Популярные" />
+                </Tabs>
+            )}
+            <Grid container spacing={isMobile ? 2 : 4}>
+                <Grid xs={isMobile ? 12 : 8} item>
+                    {(isPostsLoading ? [...Array(5)] : posts).map(
+                        (obj, index) =>
+                            isPostsLoading ? (
+                                <Post key={index} isLoading={true} />
+                            ) : (
+                                <Post
+                                    key={obj._id}
+                                    _id={obj._id}
+                                    title={obj.title}
+                                    imageUrl={
+                                        obj.imageUrl
+                                            ? `http://localhost:4444${obj.imageUrl}`
+                                            : ""
+                                    }
+                                    user={obj.user}
+                                    createdAt={format(
+                                        new Date(obj.createdAt),
+                                        "dd MMM yyyy HH:mm:ss"
+                                    )}
+                                    viewsCount={obj.viewsCount}
+                                    commentsCount={obj.comments.length}
+                                    tags={obj.tags}
+                                    isLoading={false}
+                                    isEditable={userData?._id === obj.user._id}
+                                />
+                            )
+                    )}
+                </Grid>
+                <Grid xs={isMobile ? 12 : 4} item>
+                    {isMobile ? (
+                        <CommentsBlock items={comments} isLoading={false} />
+                    ) : (
+                        <>
+                            <TagsBlock items={tags} isLoading={isTagsLoading} />
+                            <CommentsBlock items={comments} isLoading={false} />
+                        </>
+                    )}
+                </Grid>
+            </Grid>
+        </>
+    );
 };
